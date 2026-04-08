@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Glitch Terminal</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --error: #ef4444; }
+        body { font-family: sans-serif; background: var(--bg); color: white; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; border-left: 5px solid var(--accent); }
+        .glitch-border { border-left-color: var(--error); animation: blink 1s infinite; }
+        @keyframes blink { 50% { border-left-color: transparent; } }
+        .badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); }
+        .controls { margin-bottom: 20px; padding: 15px; background: var(--card); border-radius: 8px; }
+        button { background: var(--accent); border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        input[type="checkbox"] { margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h3>🌍 Global Control Center</h3>
+        <div id="market-list">
+            <label><input type="checkbox" checked onchange="refresh()"> USA (Amazon/Walmart)</label>
+            <label><input type="checkbox" onchange="refresh()"> Bangladesh (Local Customs)</label>
+            <label><input type="checkbox" onchange="refresh()"> EU / Lithuania (VAT)</label>
+        </div>
+        <hr>
+        <h4>🚨 Alert Matrix</h4>
+        <label><input type="checkbox" id="glitch-only" onchange="refresh()"> Glitches Only (90%+)</label>
+        <button onclick="downloadPassport()">💾 Backup Verified Rank</button>
+        <input type="file" id="upload-p" style="display:none" onchange="restorePassport(event)">
+        <button onclick="document.getElementById('upload-p').click()">📂 Restore Rank</button>
+    </div>
+
+    <div id="feed" class="grid">Loading deals...</div>
+
+    <script>
+        // PREFERENCES & KARMA SYSTEM
+        let userKarma = localStorage.getItem('karma') || 0;
+
+        async function refresh() {
+            const feed = document.getElementById('feed');
+            try {
+                const res = await fetch('deals.json?t=' + Date.now());
+                const deals = await res.json();
+                
+                let filtered = deals;
+                if(document.getElementById('glitch-only').checked) {
+                    filtered = deals.filter(d => d.is_glitch);
+                }
+
+                feed.innerHTML = filtered.map(d => `
+                    <div class="card ${d.is_glitch ? 'glitch-border' : ''}">
+                        <div style="display:flex; justify-content:space-between">
+                            <span class="badge">${d.cat}</span>
+                            <span class="badge" style="color:${d.trust === 'OFFICIAL' ? '#4ade80' : '#fbbf24'}">${d.trust}</span>
+                        </div>
+                        <h3>${d.title}</h3>
+                        <p>Landed Price: ${calculatePrice(d.usd)}</p>
+                        <button onclick="smartLaunch('${d.link}')" style="width:100%">FAST BUY</button>
+                        <button onclick="reportDead()" style="background:none; color:gray; font-size:0.8rem; margin-top:10px">Report Expired</button>
+                    </div>
+                `).join('');
+            } catch (e) { feed.innerHTML = "Offline. Reconnecting..."; }
+        }
+
+        function calculatePrice(usd) {
+            // Smart sensing: In a real app, use IP for currency. Here is 2026 BD/LT logic.
+            const isBD = true; // Placeholder toggle
+            if(isBD) return "৳ " + Math.round(usd * 120 * 1.43); // 43.4% tax
+            return "€ " + Math.round(usd * 0.92 * 1.21); // 21% VAT
+        }
+
+        function smartLaunch(link) {
+            const start = Date.now();
+            // Try Amazon deep link
+            window.location.href = "amzn://apps/android?url=" + encodeURIComponent(link);
+            setTimeout(() => {
+                if (Date.now() - start < 1500) window.location.href = link;
+            }, 1000);
+        }
+
+        function downloadPassport() {
+            const blob = new Blob([JSON.stringify({karma: userKarma})], {type: "application/json"});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "GlitchPassport.json";
+            a.click();
+        }
+
+        function restorePassport(e) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const data = JSON.parse(reader.result);
+                localStorage.setItem('karma', data.karma);
+                alert("Rank Restored!");
+                location.reload();
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        refresh();
+        setInterval(refresh, 60000); // Auto-refresh every minute
+    </script>
+</body>
+</html>
