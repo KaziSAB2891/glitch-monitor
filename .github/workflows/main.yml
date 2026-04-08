@@ -1,8 +1,8 @@
-name: Global Glitch Sync & Safeguard
+name: Hourly Global Sync
 on:
   schedule:
-    - cron: '0 * * * *' # Runs every hour
-  workflow_dispatch: # Allows you to run it manually
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -11,10 +11,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
       - name: Run Scraper
         run: |
           pip install requests
@@ -24,5 +20,5 @@ jobs:
           git config --global user.name "GlitchBot-Automated"
           git config --global user.email "bot@glitchmonitor.com"
           git add deals.json
-          git commit -m "Sync Data: $(date)" || exit 0
+          git commit -m "Automated Sync: $(date)" || exit 0
           git push
