@@ -1,53 +1,48 @@
-import requests
-import json
-import re
-import time
+import requests, json, re, time
 
 def analyze_trust(title, link):
-    # Detects if the deal is from an official platform or a 3rd party
-    official_sources = ["amazon.com", "walmart.com", "bestbuy.com", "apple.com"]
-    if any(site in link.lower() for site in official_sources):
-        return "OFFICIAL"
-    return "MARKETPLACE"
+    # Detects official retailers to protect users from marketplace scams
+    official = ["amazon.com", "walmart.com", "apple.com", "bestbuy.com", "target.com"]
+    return "OFFICIAL" if any(site in link.lower() for site in official) else "MARKETPLACE"
 
 def get_category(title):
     t = title.lower()
     if any(x in t for x in ["ssd", "cpu", "gpu", "laptop", "ram", "motherboard"]): return "PC Hardware"
-    if any(x in t for x in ["nike", "adidas", "watch", "shoes"]): return "Lifestyle"
+    if any(x in t for x in ["nike", "adidas", "watch", "shoes", "fashion"]): return "Lifestyle"
     return "General"
 
 def scrape():
-    # RSS Source - can be expanded to include other global feeds
+    # RSS to JSON via proxy to bypass basic bot-detection
     source = "https://api.rss2json.com/v1/api.json?rss_url=https://slickdeals.net/newsearch.php?mode=frontpage&searcharea=deals&searchin=first&rss=1"
     try:
-        data = requests.get(source, timeout=10).json()
+        response = requests.get(source, timeout=15)
+        data = response.json()
         raw_items = data.get('items', [])
         
         deals = []
         for item in raw_items:
             title = item['title']
-            # Safeguard: Ensure we capture both extreme glitches and regular high-value deals
-            is_extreme = "90%" in title or "error" in title.lower() or "free" in title.lower()
+            # Safeguard: Detection for Price Errors, 70%+ off, or Freebies
+            is_extreme = any(k in title.lower() for k in ["error", "glitch", "free"]) or re.search(r'(7[0-9]|8[0-9]|9[0-9])%', title)
             
             deals.append({
                 "id": str(hash(title + item['link'])),
                 "title": title,
                 "link": item['link'],
-                "usd": 100.0, # Logic can be added to parse price from title strings
+                "usd": 100.0, # Note: Price parsing logic can be expanded here
                 "cat": get_category(title),
                 "trust": analyze_trust(title, item['link']),
                 "is_glitch": is_extreme,
                 "timestamp": time.time()
             })
         
-        # Self-Healing: Only save if we actually found data
         if deals:
             with open('deals.json', 'w') as f:
                 json.dump(deals, f, indent=2)
-            print(f"Successfully synced {len(deals)} deals.")
+            print(f"Successfully automated {len(deals)} deals.")
             
     except Exception as e:
-        print(f"Automation Safeguard Triggered: {e}")
+        print(f"Scraper Safeguard: {e}")
 
 if __name__ == "__main__":
     scrape()
