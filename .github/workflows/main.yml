@@ -1,21 +1,28 @@
-name: Hourly Glitch Sync
+name: Global Glitch Sync & Safeguard
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *' # Runs every hour
+  workflow_dispatch: # Allows you to run it manually
 
 jobs:
-  build:
+  sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
       - name: Run Scraper
         run: |
+          pip install requests
           python scraper.py
-          if [ -s deals.json ]; then
-            git config user.name "GlitchBot"
-            git config user.email "bot@glitch.com"
-            git add deals.json
-            git commit -m "Automated Data Refresh" || exit 0
-            git push
-          fi
+      - name: Auto-Commit Deals
+        run: |
+          git config --global user.name "GlitchBot-Automated"
+          git config --global user.email "bot@glitchmonitor.com"
+          git add deals.json
+          git commit -m "Sync Data: $(date)" || exit 0
+          git push
