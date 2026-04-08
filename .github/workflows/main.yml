@@ -1,0 +1,21 @@
+name: Hourly Glitch Sync
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Scraper
+        run: |
+          python scraper.py
+          if [ -s deals.json ]; then
+            git config user.name "GlitchBot"
+            git config user.email "bot@glitch.com"
+            git add deals.json
+            git commit -m "Automated Data Refresh" || exit 0
+            git push
+          fi
